@@ -1,0 +1,31 @@
+city,country,latitude,longitude
+Chennai,India,13.0827,80.2707
+Delhi,India,28.6139,77.2090
+Mumbai,India,19.0760,72.8777
+Bangalore,India,12.9716,77.5946
+Hyderabad,India,17.3850,78.4867
+Kolkata,India,22.5726,88.3639
+New York,USA,40.7128,-74.0060
+Chicago,USA,41.8781,-87.6298
+San Francisco,USA,37.7749,-122.4194
+Seattle,USA,47.6062,-122.3321
+Los Angeles,USA,34.0522,-118.2437
+Houston,USA,29.7604,-95.3698
+Berlin,Germany,52.5200,13.4050
+Hamburg,Germany,53.5511,9.9937
+Frankfurt,Germany,50.1109,8.6821
+London,UK,51.5074,-0.1278
+Manchester,UK,53.4808,-2.2426
+Paris,France,48.8566,2.3522
+Rome,Italy,41.9028,12.4964
+Madrid,Spain,40.4168,-3.7038
+Moscow,Russia,55.7558,37.6173
+St Petersburg,Russia,59.9343,30.3351
+Beijing,China,39.9042,116.4074
+Tokyo,Japan,35.6762,139.6503
+Singapore,Singapore,1.3521,103.8198
+Sao Paulo,Brazil,-23.5505,-46.6333
+Mexico City,Mexico,19.4326,-99.1332
+Toronto,Canada,43.6510,-79.3470
+Lagos,Nigeria,6.5244,3.3792
+Dubai,UAE,25.2048,55.2708

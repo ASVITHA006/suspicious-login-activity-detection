@@ -1,0 +1,7 @@
+name,label,icon,port,risk,desc
+AnyDesk.exe,AnyDesk,🖥️,TCP/7070,CRITICAL,Direct remote desktop access tool — commonly used in unauthorized remote support scams.
+TeamViewer.exe,TeamViewer,📡,TCP/5938,CRITICAL,Cloud-relay remote desktop — frequently exploited in social engineering and technical support fraud.
+UltraVNC.exe,UltraVNC,🔌,TCP/5900,HIGH,Open-source VNC server — provides full desktop access often misconfigured.
+RealVNC.exe,RealVNC,📺,TCP/5900,HIGH,VNC remote access tool — enterprise software sometimes found in unauthorized deployments.
+Ammyy Admin.exe,Ammyy Admin,⚠️,TCP/443,CRITICAL,Remote administration tool — heavily used in phone scam campaigns to defraud victims.
+LogMeIn.exe,LogMeIn,☁️,TCP/443,MEDIUM,Cloud-based remote access — legitimate tool but may indicate unauthorized access if unexpected.

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureGuard — Threat Intelligence v3.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="alertToastContainer"></div>
+
+<!-- DATASET LOADING OVERLAY -->
+<div id="datasetLoadingOverlay" style="position:fixed;inset:0;background:var(--bg-deep);z-index:9000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
+  <div style="font-family:var(--title);font-size:1.1rem;font-weight:900;letter-spacing:0.15em;color:var(--cyan);text-transform:uppercase">🛡️ SecureGuard</div>
+  <div style="display:flex;flex-direction:column;gap:10px;width:340px">
+    <div id="dsLoad_blacklist"  class="ds-load-row">⏳ <span>Loading IP Blacklist</span>         <span class="ds-status">—</span></div>
+    <div id="dsLoad_logs"       class="ds-load-row">⏳ <span>Loading Login Logs</span>           <span class="ds-status">—</span></div>
+    <div id="dsLoad_cities"     class="ds-load-row">⏳ <span>Loading City Coordinates</span>     <span class="ds-status">—</span></div>
+    <div id="dsLoad_tools"      class="ds-load-row">⏳ <span>Loading Remote Tool Definitions</span><span class="ds-status">—</span></div>
+    <div id="dsLoad_threatintel"class="ds-load-row">⏳ <span>Loading Threat Intelligence</span>  <span class="ds-status">—</span></div>
+  </div>
+  <div style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim);margin-top:6px" id="dsLoadMsg">Initialising…</div>
+</div>
+<style>
+.ds-load-row{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:0.75rem;color:var(--text-dim);background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:9px 14px;transition:all 0.3s;}
+.ds-load-row.done{border-color:rgba(0,255,136,0.3);color:var(--green);}
+.ds-load-row.fail{border-color:rgba(255,34,85,0.3);color:var(--red);}
+.ds-load-row .ds-status{margin-left:auto;font-weight:700;}
+</style>
+
+<!-- LOGIN -->
+<div id="loginPage" class="auth-wrapper">
+  <div class="auth-box">
+    <div style="text-align:center;margin-bottom:28px">
+      <div class="auth-shield">🛡️</div>
+      <div class="auth-title">SecureGuard</div>
+      <div class="auth-sub">Bloom Filter Threat Intelligence v3.0</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <div class="input-wrap"><span class="input-icon">👤</span><input type="text" class="form-input" id="loginUser" placeholder="Enter username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <span class="input-icon">🔒</span>
+        <input type="password" class="form-input" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-dim)" onclick="togglePass('loginPass')">👁️</span>
+      </div>
+    </div>
+    <button class="auth-btn" onclick="doLogin()">Authenticate</button>
+    <div class="ip-monitor-box">
+      <div class="ip-monitor-dot"></div>
+      <span style="color:var(--text-dim)">YOUR IP IS BEING MONITORED &nbsp;|&nbsp;</span>
+      <span id="visitorIP" style="color:var(--cyan)">Detecting...</span>
+    </div>
+    <div class="demo-box">
+      <div class="demo-toggle" onclick="toggleDemo()">▶ DEMO CREDENTIALS</div>
+      <div class="demo-content" id="demoContent">
+        Admin: <strong style="color:#fff">admin</strong> / <strong style="color:#fff">admin123</strong><br>
+        User: <strong style="color:#fff">sankar</strong> / <strong style="color:#fff">pass123</strong>
+      </div>
+    </div>
+    <div class="auth-link">Don't have an account? <a onclick="showAuthPage('registerPage')">Create Account</a></div>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div id="registerPage" class="auth-wrapper" style="display:none">
+  <div class="auth-box">
+    <div style="text-align:center;margin-bottom:28px">
+      <div class="auth-shield">🔐</div>
+      <div class="auth-title">Register</div>
+      <div class="auth-sub">Create SecureGuard Account</div>
+    </div>
+    <div class="form-group"><label class="form-label">Username</label><div class="input-wrap"><span class="input-icon">👤</span><input type="text" class="form-input" id="regUser" placeholder="Username"></div></div>
+    <div class="form-group"><label class="form-label">Email</label><div class="input-wrap"><span class="input-icon">✉️</span><input type="email" class="form-input" id="regEmail" placeholder="Email (optional)"></div></div>
+    <div class="form-group"><label class="form-label">Password</label><div class="input-wrap"><span class="input-icon">🔒</span><input type="password" class="form-input" id="regPass" placeholder="Min 6 chars"></div></div>
+    <div class="form-group"><label class="form-label">Confirm Password</label><div class="input-wrap"><span class="input-icon">🔒</span><input type="password" class="form-input" id="regPass2" placeholder="Repeat password"></div></div>
+    <button class="auth-btn" onclick="doRegister()">Create Account</button>
+    <div class="auth-link">Already have an account? <a onclick="showAuthPage('loginPage')">Sign In</a></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" class="app" style="display:none">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-name"><span class="brand-dot"></span>SecureGuard</div>
+      <div class="brand-sub">Bloom Filter IDS v3.0</div>
+    </div>
+    <nav>
+      <div class="nav-section">Core</div>
+      <div class="nav-item active" onclick="navTo('dashboard',this)"><span class="nav-icon">⊞</span> Dashboard</div>
+      <div class="nav-item" onclick="navTo('geoAnalysis',this)"><span class="nav-icon">🌍</span> Geo Analysis <span style="margin-left:auto;background:rgba(0,229,255,0.15);color:var(--cyan);font-size:0.58rem;padding:1px 7px;border-radius:10px;font-family:var(--mono)">CHARTS</span></div>
+      <div class="nav-section">Threat Detection</div>
+      <div class="nav-item" onclick="navTo('bloomScanner',this)"><span class="nav-icon">🔬</span> Bloom Scanner</div>
+      <div class="nav-item" onclick="navTo('impossibleTravel',this)"><span class="nav-icon">✈️</span> Impossible Travel <span style="margin-left:auto;background:rgba(255,34,85,0.15);color:var(--red);font-size:0.58rem;padding:1px 7px;border-radius:10px;font-family:var(--mono)">NEW</span></div>
+      <div class="nav-item" onclick="navTo('remoteAccess',this)"><span class="nav-icon">🖥️</span> Remote Access</div>
+      <div class="nav-section">Intelligence</div>
+      <div class="nav-item" onclick="navTo('threatIntel',this)"><span class="nav-icon">🌐</span> Threat Intel <span style="margin-left:auto;background:rgba(187,102,255,0.15);color:var(--purple);font-size:0.58rem;padding:1px 7px;border-radius:10px;font-family:var(--mono)">LIVE</span></div>
+      <div class="nav-section">Logs & Reports</div>
+      <div class="nav-item" onclick="navTo('loginLogs',this)"><span class="nav-icon">📋</span> Login Logs</div>
+      <div class="nav-item" onclick="navTo('securityAlerts',this)"><span class="nav-icon">⚠️</span> Security Alerts <span id="alertBadge" class="nav-badge"></span></div>
+      <div class="nav-item" onclick="navTo('ipAnalysis',this)"><span class="nav-icon">🌐</span> IP Analysis</div>
+    </nav>
+    <div class="nav-logout">
+      <div class="logout-btn" onclick="doLogout()"><span>→</span> Logout</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Security Dashboard</div>
+      <div class="topbar-right">
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--text-dim)" id="csvStatus">No CSV loaded</div>
+        <div class="user-badge"><span class="user-dot"></span><span id="currentUserBadge">user</span></div>
+        <button class="refresh-btn" onclick="renderAll()">↻ REFRESH</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div id="page-dashboard" class="page active">
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- DATASET SOURCES PANEL -->
+        <div class="section-title">📂 Imported Datasets</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px" id="datasetSourcesGrid">
+          <div class="ds-card" id="dsc_logs">
+            <div class="ds-card-icon">📋</div>
+            <div class="ds-card-name">Login Logs</div>
+            <div class="ds-card-file">data/login_logs.csv</div>
+            <div class="ds-card-count" id="dsc_logs_count">—</div>
+            <div class="ds-card-badge">81 records · 6 columns</div>
+          </div>
+          <div class="ds-card" id="dsc_blacklist">
+            <div class="ds-card-icon">🚫</div>
+            <div class="ds-card-name">IP Blacklist</div>
+            <div class="ds-card-file">data/ip_blacklist.csv</div>
+            <div class="ds-card-count" id="dsc_blacklist_count">—</div>
+            <div class="ds-card-badge">30 IPs · Tor/Threat</div>
+          </div>
+          <div class="ds-card" id="dsc_cities">
+            <div class="ds-card-icon">🗺️</div>
+            <div class="ds-card-name">City Coordinates</div>
+            <div class="ds-card-file">data/city_coordinates.csv</div>
+            <div class="ds-card-count" id="dsc_cities_count">—</div>
+            <div class="ds-card-badge">30 cities · lat/long</div>
+          </div>
+          <div class="ds-card" id="dsc_tools">
+            <div class="ds-card-icon">🖥️</div>
+            <div class="ds-card-name">Remote Tools</div>
+            <div class="ds-card-file">data/remote_tools.csv</div>
+            <div class="ds-card-count" id="dsc_tools_count">—</div>
+            <div class="ds-card-badge">6 RAT definitions</div>
+          </div>
+          <div class="ds-card" id="dsc_ti">
+            <div class="ds-card-icon">🌐</div>
+            <div class="ds-card-name">Threat Intel</div>
+            <div class="ds-card-file">data/threat_intel.csv</div>
+            <div class="ds-card-count" id="dsc_ti_count">—</div>
+            <div class="ds-card-badge">APTs · Sectors · Vectors</div>
+          </div>
+        </div>
+        <div class="section-title">Task Actions</div>
+        <div class="tasks-grid">
+          <button class="task-btn cyan" onclick="taskAnalyzeLogs()"><div class="task-icon cyan">🔍</div><div><div class="task-text-title">Analyze Login Logs</div><div class="task-text-sub">Identify brute force attempts</div></div></button>
+          <button class="task-btn yellow" onclick="navTo('geoAnalysis',document.querySelector('[onclick*=geoAnalysis]'))"><div class="task-icon yellow">🌍</div><div><div class="task-text-title">Geo Location Charts</div><div class="task-text-sub">Visualize geographic threats</div></div></button>
+          <button class="task-btn red" onclick="taskIPReputation()"><div class="task-icon red">🔎</div><div><div class="task-text-title">IP Reputation Scan</div><div class="task-text-sub">Bloom filter + geo scoring</div></div></button>
+          <button class="task-btn purple" onclick="taskMLDetect()"><div class="task-icon purple">🤖</div><div><div class="task-text-title">ML Anomaly Detection</div><div class="task-text-sub">Detect abnormal behavior</div></div></button>
+          <button class="task-btn green" onclick="taskGenerateAlerts()"><div class="task-icon green">🚨</div><div><div class="task-text-title">Generate Alerts</div><div class="task-text-sub">Trigger security warnings</div></div></button>
+          <button class="task-btn orange" onclick="navTo('remoteAccess',document.querySelector('[onclick*=remoteAccess]'))"><div class="task-icon orange">🖥️</div><div><div class="task-text-title">Remote Access Scan</div><div class="task-text-sub">Detect AnyDesk, TeamViewer</div></div></button>
+          <button class="task-btn red" style="grid-column:span 3;justify-content:center" onclick="navTo('impossibleTravel',document.querySelector('[onclick*=impossibleTravel]'))"><div class="task-icon red">✈️</div><div><div class="task-text-title">✈️ Impossible Travel Detection</div><div class="task-text-sub">Detect logins from physically impossible locations — e.g. Chennai at 09:10 → New York at 09:15</div></div></button>
+        </div>
+        <div id="taskResult" class="result-panel">
+          <div class="result-header"><div class="result-title" id="resultTitle">OUTPUT</div><button class="close-result" onclick="closeResult()">✕</button></div>
+          <div class="result-body" id="resultBody"></div>
+        </div>
+        <!-- IMPOSSIBLE TRAVEL DASHBOARD WIDGET -->
+        <div id="itDashWidget" style="display:none;margin-bottom:20px">
+          <div class="section-title">✈️ Impossible Travel Alerts</div>
+          <div id="itDashCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px"></div>
+        </div>
+
+        <div class="section-title" style="margin-top:24px">Recent Login Activity</div>
+        <div class="table-card">
+          <div class="table-header"><h3>Login Attempts</h3><span class="badge" id="logCount">Loading...</span></div>
+          <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Username</th><th>IP Address</th><th>Country</th><th>City</th><th>Status</th><th>Bloom</th><th>Timestamp</th><th>Δ Gap</th><th>Flags</th></tr></thead><tbody id="logsTableBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- GEO ANALYSIS -->
+      <div id="page-geoAnalysis" class="page">
+        <!-- WORKING HOURS LIVE BANNER -->
+        <div id="workHoursBanner" class="hours-banner safe" style="margin-bottom:20px">
+          <div class="hours-icon" id="workHoursIcon">🕐</div>
+          <div>
+            <div class="hours-clock" id="liveClock">--:--:--</div>
+            <div class="hours-label" id="workHoursLabel">Working Hours: 10:00 AM – 9:00 PM</div>
+          </div>
+          <div class="hours-divider"></div>
+          <div>
+            <div id="workStatusBadge" class="work-time-badge">✓ WITHIN WORKING HOURS</div>
+            <div style="font-size:0.65rem;color:var(--text-dim);font-family:var(--mono);margin-top:4px" id="nextShiftLabel"></div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div style="font-size:0.7rem;color:var(--text-dim);font-family:var(--mono)">Off-hours violations</div>
+            <div style="font-family:var(--title);font-size:1.4rem;color:var(--orange)" id="offHoursViolationCount">0</div>
+          </div>
+        </div>
+
+        <!-- WORK HOURS VISUAL TIMELINE -->
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:0.82rem;font-weight:700;color:#fff">⏰ 24-Hour Activity vs Working Hours</div>
+            <div style="font-size:0.68rem;font-family:var(--mono);color:var(--text-dim)">Green zone = your working hours (10:00–21:00)</div>
+          </div>
+          <div class="wh-timeline" id="whTimeline"></div>
+          <div style="display:flex;gap:16px;font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);margin-top:6px">
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:rgba(0,229,255,0.18);border-radius:2px;display:inline-block"></span>Working Hours</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:rgba(255,34,85,0.12);border-radius:2px;display:inline-block"></span>Off Hours</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:rgba(255,204,0,0.5);border-radius:2px;display:inline-block"></span>Current Hour</span>
+          </div>
+        </div>
+
+        <!-- OFF-HOURS SUSPICIOUS EVENTS -->
+        <div class="offhours-panel" id="offHoursPanel">
+          <div class="offhours-panel-header">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:1.1rem">🌙</span>
+              <div>
+                <div style="font-size:0.88rem;font-weight:700;color:#fff">Off-Hours Suspicious Activity</div>
+                <div style="font-size:0.68rem;font-family:var(--mono);color:var(--text-dim)">Login events detected outside working hours (10:00 AM – 9:00 PM)</div>
+              </div>
+            </div>
+            <span class="badge" id="offHoursCount">Scanning...</span>
+          </div>
+          <div id="offHoursList" style="max-height:320px;overflow-y:auto"></div>
+        </div>
+
+        <div class="section-title">Geographic Threat Analysis</div>
+        <div class="charts-grid">
+          <div class="chart-card wide">
+            <div class="chart-title">Login Attempts by Country</div>
+            <div class="chart-sub">Total attempts per geographic origin — hover for details</div>
+            <div class="chart-canvas-wrap tall"><canvas id="chartCountryBar"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Success vs Failed</div>
+            <div class="chart-sub">Overall login outcome distribution</div>
+            <div class="chart-canvas-wrap"><canvas id="chartDonut"></canvas></div>
+          </div>
+          <div class="chart-card wide">
+            <div class="chart-title">Login Activity Timeline</div>
+            <div class="chart-sub">Attempts over time (by hour)</div>
+            <div class="chart-canvas-wrap"><canvas id="chartTimeline"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Top Countries by Failed Logins</div>
+            <div class="chart-sub">Threat origin ranking</div>
+            <div style="margin-top:8px" id="geoRankList"></div>
+          </div>
+          <div class="chart-card wide">
+            <div class="chart-title">Suspicious vs Safe IPs by Country</div>
+            <div class="chart-sub">Stacked bar — failed vs successful logins per country</div>
+            <div class="chart-canvas-wrap"><canvas id="chartStackedCountry"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Bloom Filter Hit Distribution</div>
+            <div class="chart-sub">Blacklisted IP detection breakdown</div>
+            <div class="chart-canvas-wrap"><canvas id="chartBloom"></canvas></div>
+          </div>
+        </div>
+
+        <div class="section-title">Unusual IP Detection — Geographic Anomalies</div>
+        <div class="table-card">
+          <div class="table-header"><h3>🚨 Suspicious / Unusual IP Report</h3><span class="badge" id="unusualCount">Scanning...</span></div>
+          <div style="overflow-x:auto"><table><thead><tr><th>IP Address</th><th>Country</th><th>City</th><th>User</th><th>Attempts</th><th>Failed</th><th>Bloom</th><th>Risk Level</th><th>Reason</th></tr></thead><tbody id="unusualIPBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- BLOOM SCANNER -->
+      <div id="page-bloomScanner" class="page">
+        <div class="section-title">Bloom Filter — IP Blacklist Scanner</div>
+
+        <!-- TOR LIVE FEED STATUS CARD -->
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px 22px;margin-bottom:18px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#7928ca,#ff0080,transparent)"></div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
+            <div style="flex:1;min-width:220px">
+              <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px">
+                🧅 Real-Time Tor Exit Node Feed
+                <span style="background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.3);color:var(--cyan);font-size:0.58rem;font-family:var(--mono);padding:1px 8px;border-radius:20px">LIVE DATASET</span>
+              </div>
+              <div style="font-size:0.7rem;color:var(--text-dim);font-family:var(--mono);line-height:1.7">
+                Fetches the live Tor Project exit node list from <strong style="color:var(--cyan)">check.torproject.org</strong> on every page load.<br>
+                All ~1,500 real Tor exit IPs are seeded into the Bloom Filter — on top of the built-in static blacklist.
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;flex-shrink:0">
+              <div style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center">
+                <div style="font-family:var(--title);font-size:1.3rem;font-weight:900;color:var(--red)" id="torCountDisplay">—</div>
+                <div style="font-size:0.58rem;color:var(--text-dim);font-family:var(--mono);margin-top:2px;letter-spacing:0.08em">TOR NODES</div>
+              </div>
+              <div style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center">
+                <div style="font-family:var(--title);font-size:1.3rem;font-weight:900;color:var(--cyan)" id="totalBlacklistDisplay">30</div>
+                <div style="font-size:0.58rem;color:var(--text-dim);font-family:var(--mono);margin-top:2px;letter-spacing:0.08em">TOTAL IPs</div>
+              </div>
+              <div style="background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:8px;padding:10px 14px;text-align:center">
+                <div style="font-family:var(--title);font-size:1.3rem;font-weight:900;color:var(--green)" id="torHitsInLogs">—</div>
+                <div style="font-size:0.58rem;color:var(--text-dim);font-family:var(--mono);margin-top:2px;letter-spacing:0.08em">LOG HITS</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:14px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:10px 14px" id="torFeedStatus">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:9px;height:9px;border-radius:50%;background:var(--yellow);display:inline-block;animation:pulse 1s infinite"></span>
+              <span style="font-family:var(--mono);font-size:0.72rem;color:var(--text-dim)">Initializing live Tor exit node feed…</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bloom-visualizer">
+          <div class="bloom-header">
+            <div class="bloom-title">🔬 Bloom Filter Bit Array (250 bit visualization)</div>
+            <div class="bloom-stats">IPs Loaded: <span class="bloom-stat-val" id="bloomIPCount">0</span> &nbsp;|&nbsp; Bits Set: <span class="bloom-stat-val" id="bloomBitsSet">0</span> &nbsp;|&nbsp; Fill Rate: <span class="bloom-stat-val" id="bloomFillRate">0%</span></div>
+          </div>
+          <div class="bloom-grid" id="bloomBitGrid"></div>
+          <div class="bloom-legend">
+            <div class="bloom-legend-item"><div class="bloom-legend-dot" style="background:rgba(22,45,74,0.6)"></div>Unset (0)</div>
+            <div class="bloom-legend-item"><div class="bloom-legend-dot" style="background:var(--cyan)"></div>Set (1)</div>
+            <div class="bloom-legend-item"><div class="bloom-legend-dot" style="background:var(--red)"></div>Query Hit</div>
+          </div>
+        </div>
+        <div class="ip-scanner">
+          <div style="margin-bottom:14px">
+            <div style="font-size:0.85rem;font-weight:700;color:#fff;margin-bottom:3px">🔍 Check IP Against Bloom Filter</div>
+            <div style="font-size:0.72rem;color:var(--text-dim);font-family:var(--mono)">3 hash functions: DJB2, FNV-1a, SDBM — O(k) lookup, zero false negatives</div>
+          </div>
+          <div class="scanner-input-row">
+            <input class="scanner-input" id="bloomIPInput" placeholder="e.g. 185.220.101.45 or 1.1.1.1" onkeydown="if(event.key==='Enter')bloomCheckIP()">
+            <button class="scan-btn" onclick="bloomCheckIP()">CHECK IP</button>
+          </div>
+          <div id="bloomScanResult" class="scan-result"></div>
+          <div style="margin-top:16px">
+            <div style="font-size:0.8rem;font-weight:700;color:#fff;margin-bottom:8px">📋 Quick Test IPs</div>
+            <div class="quick-btns">
+              <button class="quick-btn" style="background:rgba(255,34,85,0.1);border-color:rgba(255,34,85,0.3);color:var(--red)" onclick="quickCheck('185.220.101.45')">185.220.101.45 (Tor)</button>
+              <button class="quick-btn" style="background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3);color:var(--green)" onclick="quickCheck('1.1.1.1')">1.1.1.1 (Cloudflare)</button>
+              <button class="quick-btn" style="background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:var(--cyan)" onclick="quickCheck('192.168.1.1')">192.168.1.1 (Private)</button>
+              <button class="quick-btn" style="background:rgba(255,204,0,0.1);border-color:rgba(255,204,0,0.3);color:var(--yellow)" onclick="quickCheck('45.155.205.233')">45.155.205.233</button>
+              <button class="quick-btn" style="background:rgba(0,255,136,0.1);border-color:rgba(0,255,136,0.3);color:var(--green)" onclick="quickCheck('8.8.8.8')">8.8.8.8 (Google)</button>
+              <button class="quick-btn" style="background:rgba(255,136,0,0.1);border-color:rgba(255,136,0,0.3);color:var(--orange)" onclick="quickCheck('103.45.66.12')">103.45.66.12 (CSV)</button>
+            </div>
+          </div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><h3>🌐 IP Reputation Lookup</h3><span class="badge">Geo + Bloom</span></div>
+          <div style="padding:18px">
+            <div style="font-size:0.72rem;color:var(--text-dim);font-family:var(--mono);margin-bottom:12px">Real-time geo lookup + Bloom Filter cross-check</div>
+            <div class="scanner-input-row">
+              <input class="scanner-input" id="reputationIPInput" placeholder="Enter IP for reputation scan..." onkeydown="if(event.key==='Enter')reputationScan()">
+              <button class="scan-btn" id="repScanBtn" onclick="reputationScan()">SCAN REPUTATION</button>
+            </div>
+            <div id="reputationResult" class="scan-result" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMPOSSIBLE TRAVEL -->
+      <div id="page-impossibleTravel" class="page">
+        <div class="it-summary-bar" id="itSummaryBar">
+          <div class="it-stat red"><div class="it-lbl">Impossible Cases</div><div class="it-val" id="itCountImpossible">—</div><div class="it-sub">Physically impossible travel</div></div>
+          <div class="it-stat orange"><div class="it-lbl">Suspicious Cases</div><div class="it-val" id="itCountSuspicious">—</div><div class="it-sub">Very high speed travel</div></div>
+          <div class="it-stat purple"><div class="it-lbl">Users Flagged</div><div class="it-val" id="itCountUsers">—</div><div class="it-sub">Unique accounts affected</div></div>
+          <div class="it-stat cyan"><div class="it-lbl">Max Speed Detected</div><div class="it-val" id="itMaxSpeed">—</div><div class="it-sub">km/h required</div></div>
+        </div>
+
+        <div style="background:rgba(255,34,85,0.06);border:1px solid rgba(255,34,85,0.2);border-radius:12px;padding:16px 20px;margin-bottom:22px;display:flex;align-items:flex-start;gap:14px;">
+          <span style="font-size:1.5rem;margin-top:2px">✈️</span>
+          <div>
+            <div style="font-size:0.88rem;font-weight:700;color:#fff;margin-bottom:4px">How Impossible Travel Detection Works</div>
+            <div style="font-size:0.73rem;color:var(--text-dim);font-family:var(--mono);line-height:1.8">
+              When the same user logs in from two different locations within a short time window, we calculate the <strong style="color:var(--cyan)">minimum required travel speed</strong> between those coordinates.<br>
+              🔴 <strong style="color:var(--red)">IMPOSSIBLE</strong> — Speed &gt; 900 km/h (faster than commercial aircraft) &nbsp;|&nbsp;
+              🟠 <strong style="color:var(--orange)">SUSPICIOUS</strong> — Speed &gt; 200 km/h &nbsp;|&nbsp;
+              ✅ <strong style="color:var(--green)">NORMAL</strong> — Plausible travel time
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Detected Travel Anomalies</div>
+        <div id="impossibleTravelList"><div class="empty-state"><div class="empty-icon">✈️</div>Analyzing travel patterns...</div></div>
+
+        <div class="section-title" style="margin-top:24px">All User Travel Paths</div>
+        <div class="table-card">
+          <div class="table-header"><h3>Login Location Sequence</h3><span class="badge" id="travelTableCount">—</span></div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>User</th><th>From Location</th><th>From Time</th><th>To Location</th><th>To Time</th><th>Δ Time</th><th>Distance</th><th>Speed Required</th><th>Verdict</th></tr></thead>
+              <tbody id="travelTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- REMOTE ACCESS -->
+      <div id="page-remoteAccess" class="page">
+        <div class="section-title">Remote Access Detection Simulation</div>
+        <div class="remote-panel">
+          <div class="remote-header">
+            <div class="remote-title">🖥️ Remote Desktop Tool Scanner
+              <span style="font-size:0.65rem;font-family:var(--mono);color:var(--text-dim);font-weight:400;margin-left:8px">Simulates process monitoring for unauthorized remote access tools</span>
+            </div>
+            <button class="remote-scan-btn" id="remoteScanBtn" onclick="startRemoteScan()">⟳ RUN SCAN</button>
+          </div>
+          <div class="remote-body">
+            <div class="process-list" id="processList"></div>
+            <div class="remote-alert-box" id="remoteAlertBox">
+              <div class="remote-alert-title">⚠️ UNAUTHORIZED REMOTE ACCESS DETECTED</div>
+              <div class="remote-alert-desc" id="remoteAlertDesc"></div>
+            </div>
+            <div class="remote-safe-box" id="remoteSafeBox">
+              <div style="color:var(--green);font-size:0.85rem;font-weight:700;margin-bottom:5px">✅ SYSTEM SECURE — No Remote Tools Detected</div>
+              <div style="color:var(--text-dim);font-family:var(--mono);font-size:0.73rem">All monitored processes: CLEAN. No unauthorized remote access tools running.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">What We Detect</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-size:1.2rem;margin-bottom:8px">🖥️</div>
+            <div style="font-size:0.82rem;font-weight:700;color:#fff;margin-bottom:4px">AnyDesk</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);font-family:var(--mono)">anydesk.exe — Remote desktop access with direct TCP connections. Often used in social engineering attacks.</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-size:1.2rem;margin-bottom:8px">📡</div>
+            <div style="font-size:0.82rem;font-weight:700;color:#fff;margin-bottom:4px">TeamViewer</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);font-family:var(--mono)">TeamViewer.exe — Remote control via cloud relay. Frequently exploited for unauthorized access during scam calls.</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-size:1.2rem;margin-bottom:8px">🔌</div>
+            <div style="font-size:0.82rem;font-weight:700;color:#fff;margin-bottom:4px">Other RATs</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);font-family:var(--mono)">UltraVNC, RealVNC, LogMeIn, Ammyy Admin — additional remote tools that may indicate unauthorized access.</div>
+          </div>
+        </div>
+
+        <div class="section-title">Correlation with Login Events</div>
+        <div class="table-card">
+          <div class="table-header"><h3>Remote Access + Login Correlation</h3><span class="badge">Simulated Analysis</span></div>
+          <div style="overflow-x:auto"><table><thead><tr><th>Event Time</th><th>User</th><th>IP</th><th>Remote Tool</th><th>Correlation</th><th>Risk</th></tr></thead><tbody id="remoteCorrelationBody"></tbody></table></div>
+        </div>
+      </div>
+
+
+      <!-- THREAT INTEL -->
+      <div id="page-threatIntel" class="page">
+        <div class="section-title">🌐 Global Threat Intelligence — 2024–2025</div>
+        <div style="font-size:0.75rem;color:var(--text-dim);font-family:var(--mono);margin-bottom:20px">Based on major breach &amp; APT data: CISA advisories, CrowdStrike, Mandiant, IBM X-Force, Verizon DBIR 2024</div>
+        <div id="tiKpiRow" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="chart-card" style="min-height:340px">
+            <div class="chart-title">&#x1F6A9; Top 10 Attack Origin Countries</div>
+            <div class="chart-sub">Known/attributed cyberattacks by nation-state &amp; cybercriminal groups</div>
+            <div class="chart-canvas-wrap tall"><canvas id="chartTiCountry"></canvas></div>
+          </div>
+          <div class="chart-card" style="min-height:340px">
+            <div class="chart-title">&#x1F3ED; Most Targeted Sectors</div>
+            <div class="chart-sub">Industries with highest breach volume in 2024–2025</div>
+            <div class="chart-canvas-wrap tall"><canvas id="chartTiSector"></canvas></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="chart-card">
+            <div class="chart-title">&#x2694;&#xFE0F; Attack Vector Breakdown</div>
+            <div class="chart-sub">How attackers gain initial access (all sectors)</div>
+            <div class="chart-canvas-wrap"><canvas id="chartTiVector"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">&#x1F4C8; Monthly Attack Volume Trend</div>
+            <div class="chart-sub">Relative threat level Jan 2024 – Feb 2025</div>
+            <div class="chart-canvas-wrap"><canvas id="chartTiTrend"></canvas></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:18px">
+          <div class="chart-card">
+            <div class="chart-title">&#x1F5FA;&#xFE0F; Attack Origin × Target Sector Matrix</div>
+            <div class="chart-sub">Which countries attack which sectors most (top 6 × top 5)</div>
+            <div class="chart-canvas-wrap tall"><canvas id="chartTiMatrix"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">&#x1F3AF; Threat Actor Type</div>
+            <div class="chart-sub">Nation-state vs cybercriminal vs hacktivist share</div>
+            <div class="chart-canvas-wrap"><canvas id="chartTiActor"></canvas></div>
+          </div>
+        </div>
+        <div class="section-title" style="margin-top:8px">&#x1F575;&#xFE0F; Notable APT Groups Active in 2024–2025</div>
+        <div class="table-card">
+          <div style="overflow-x:auto">
+            <table><thead><tr><th>Group</th><th>Origin</th><th>Also Known As</th><th>Primary Targets</th><th>Tactics</th><th>Activity Level</th><th>Last Seen</th></tr></thead>
+            <tbody id="aptTableBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGIN LOGS -->
+      <div id="page-loginLogs" class="page">
+        <div class="section-title">All Login Logs</div>
+        <div class="table-card">
+          <div class="table-header"><h3>Complete Login History</h3><span class="badge" id="logCount2">All records</span></div>
+          <div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Username</th><th>IP Address</th><th>Country</th><th>City</th><th>Status</th><th>Bloom</th><th>Timestamp</th><th>Δ Gap</th><th>Flags</th><th>Details</th></tr></thead><tbody id="logsTableBody2"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- SECURITY ALERTS -->
+      <div id="page-securityAlerts" class="page">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin-bottom:0;flex:1">Security Alerts</div>
+          <button onclick="clearAlerts()" style="background:rgba(255,34,85,0.1);border:1px solid rgba(255,34,85,0.25);color:var(--red);padding:5px 14px;border-radius:8px;font-family:var(--mono);font-size:0.68rem;cursor:pointer">Clear All</button>
+        </div>
+        <div id="alertsList"></div>
+      </div>
+
+      <!-- IP ANALYSIS -->
+      <div id="page-ipAnalysis" class="page">
+        <div class="section-title">Tracked IP Addresses</div>
+        <div class="ip-grid" id="ipGrid"></div>
+        <div class="section-title">IP Log Export</div>
+        <div class="table-card">
+          <div class="table-header"><h3>ip_log.csv Records</h3><button class="csv-export-btn" onclick="exportCSV()">⬇ Export CSV</button></div>
+          <div style="padding:16px"><div class="csv-table-wrap"><table class="csv-table" id="csvTableFull"></table></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IP DETAIL MODAL -->
+<div class="modal-overlay" id="ipDetailModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeIPModal()">✕</button>
+    <div class="modal-title" id="ipModalTitle">IP Details</div>
+    <div class="modal-sub" id="ipModalSub"></div>
+    <div id="ipModalBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script></body>
+</html>
